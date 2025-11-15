@@ -68,17 +68,36 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
     !!status;
 
   const handleSubmit = () => {
-    const safeTime = typeof timeTaken === 'number' && timeTaken > 0 ? timeTaken : 1; // auto-correct
-    const payload: Omit<Task, 'id'> & { id?: string } = {
+    const safeTime = typeof timeTaken === 'number' && timeTaken > 0 ? timeTaken : 1;
+    
+    // FIX: Construct the payload to only include fields the user supplies.
+    // Omit auto-generated fields like createdAt and completedAt for new tasks.
+    const basePayload = {
       title: title.trim(),
       revenue: typeof revenue === 'number' ? revenue : 0,
       timeTaken: safeTime,
       priority: ((priority || 'Medium') as Priority),
       status: ((status || 'Todo') as Status),
       notes: notes.trim() || undefined,
-      ...(initial ? { id: initial.id } : {}),
     };
-    onSubmit(payload);
+
+    let finalPayload: Omit<Task, 'id'> & { id?: string };
+
+    if (initial) {
+      // If editing, merge the updated fields and include the ID
+      // TypeScript requires us to include the original createdAt when passing Task payload with ID
+      finalPayload = { 
+        ...basePayload,
+        id: initial.id,
+        createdAt: initial.createdAt, // Retain required field for update logic
+        completedAt: initial.completedAt, // Retain required field for update logic
+      };
+    } else {
+      // If adding, use only basePayload. The receiving hook will add createdAt/completedAt.
+      finalPayload = basePayload;
+    }
+
+    onSubmit(finalPayload);
     onClose();
   };
 
@@ -146,5 +165,3 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
     </Dialog>
   );
 }
-
-
